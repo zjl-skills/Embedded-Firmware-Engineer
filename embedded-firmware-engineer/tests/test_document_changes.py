@@ -86,3 +86,24 @@ class DocumentChangeTests(ProjectCase):
         self.assertEqual(impact["code"], ["src/app.c", "src/driver.c"])
         self.assertEqual(impact["tests"], ["T-READ"])
         self.assertEqual(impact["priority_hint"], "P0")
+
+    def test_markdown_report_walks_facts_through_delivery_without_mutating_inputs(self):
+        config = self.read_state("config")
+        config["document_roots"] = ["docs"]
+        self.write_state("config", config)
+        trace = self.make_trace()
+        doc = self.prepare_document("docs/component.md", "Version: A\nInput 5 V\n")
+        self.put("delivery/guide.md", "old delivery\n")
+        trace["requirements"][0]["deliverables"] = ["delivery/guide.md"]
+        self.write_state("traceability", trace)
+        self.write_state("facts", {"schema_version": 1, "facts": [{"id": "F-1", "key": "VIN",
+                          "source": {"document": doc["id"], "locator": "行 2"}, "requirements": ["REQ-1"]}]})
+        old_registry = (self.state / "documents.json").read_bytes()
+        self.put(doc["path"], "Version: B\nInput 3 V\n")
+        self.run_cli("check_document_changes", "--format", "md", "--output", ".embedded/reports/DOCUMENT_IMPACT.md",
+                     "--fail-on-change", code=1)
+        report = (self.state / "reports/DOCUMENT_IMPACT.md").read_text(encoding="utf-8")
+        for term in ("F-1", "REQ-1", "src/driver.c", "T-READ", "delivery/guide.md", "待确认", "+Input 3 V"):
+            self.assertIn(term, report)
+        self.assertEqual((self.state / "documents.json").read_bytes(), old_registry)
+        self.assertEqual((self.root / "delivery/guide.md").read_bytes(), b"old delivery\n")

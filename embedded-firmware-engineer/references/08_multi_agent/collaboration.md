@@ -43,3 +43,11 @@ Project Coordinator 负责计划、模块划分、硬件和接口共同基线、
 分发任务时只给相关 Reference、文档与范围，主控接收摘要、关键日志片段、证据路径及结论。接近上下文上限、换执行者或交回所有权时先落盘交接，附失败命令、预期、当前发现和继续动作。已有用户修改应记录可定位差异和归属。
 
 恢复顺序为 `PROJECT_CONTEXT.md` → `PROJECT_BASELINE.md` → 模块 `MODULE_CONTEXT.md` → `HANDOFF.md` → `git status --short` 和 `git rev-parse HEAD` → 接口及资料变化 → 上次验证与剩余工作。检查基线、未提交变更、关联的 P0 和所有权后再继续。实际线程可续接时仍复核工程状态。只在用户授权的范围创建或持久运行独立会话。
+
+## 可执行的计划和恢复检查
+
+按需将 [协作计划模板](../../templates/project/collaboration.json) 填为 `.embedded/collaboration.json`。每个 UART、SPI、I2C、Sensor、Storage、Communication、Application 或 RTOS 模块使用独立且稳定的模块 ID。任务记录 `id`、`module`、`role`、`writes`、`depends_on`、`interfaces`，可选 `branch` 和 `baseline`。写范围支持确切路径和 `目录/**`。接口条目含 `id`、`path`、`version`、`sha256`、`approved_by`。由协调者复核批准来源、准备基线并管理公共接口。
+
+先运行 `check_collaboration.py <项目>` 检查依赖环、并行写范围重叠和锁定接口漂移。分派后在各任务工作树执行 `check_collaboration.py <项目> --task <任务> --base <完整提交> --resume`。检查分支、提交祖先、已跟踪和未跟踪的任务变更、写范围及四份恢复记录。恢复者阅读真实内容并确认下一动作。获批准需要调整接口时，由协调者暂停依赖任务、记录新接口和影响、更新散列后重新分派及集成。
+
+宿主并发不足时优先并行独立模块，按依赖分批安排其余角色。宿主仅支持通用子 Agent 时明确分配专业职责。宿主无法启动子 Agent 时，按相同任务包顺序执行。汇总时记录观察到的实际线程、Git 工作树、批次、命令和审查结果。可复现的本地隔离验证见 [UART 协作演练](../../examples/collaboration/README.md)。

@@ -1,0 +1,49 @@
+name: Firmware Skill CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Regression (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install validation and PDF dependencies
+        run: python -m pip install PyYAML 'tomli; python_version < "3.11"' 'pdfplumber>=0.11,<0.12'
+      - name: Locate GCC on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            $candidates = @('C:\mingw64\bin', 'C:\msys64\ucrt64\bin', 'C:\msys64\mingw64\bin')
+            $found = $candidates | Where-Object { Test-Path (Join-Path $_ 'gcc.exe') } | Select-Object -First 1
+            if (-not $found) { throw 'No MinGW GCC found on the Windows runner' }
+            Add-Content -LiteralPath $env:GITHUB_PATH -Value $found
+          }
+      - name: Validate skill metadata, links, syntax and CLI help
+        run: python -X utf8 -B .github/check_skill.py
+      - name: Run unit tests and path protection checks
+        run: python -X utf8 -B -m unittest discover -s embedded-firmware-engineer/tests -v
+      - name: Run the three firmware examples
+        run: python -X utf8 -B embedded-firmware-engineer/examples/run_examples.py --cc gcc
+      - name: Verify Git collaboration and host integration
+        run: python -X utf8 -B embedded-firmware-engineer/examples/collaboration/run_collaboration.py --cc gcc

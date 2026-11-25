@@ -6,7 +6,7 @@
 
 - 识别 MCU、工具链、RTOS 和构建入口，登记硬件资料并检查版本、冲突和变更影响。
 - 采用六层架构划分模块和接口，支持驱动、裸机和 RTOS 开发，以及跨 MCU 移植与构建调试。
-- 提供 7 个 Python 命令，覆盖初始化、工程扫描、资料登记、变更检查、需求追溯、分层检查和工程校验。
+- V1.1 提供 10 个 Python 命令，新增可定位的资料解析、协作检查和结构化测试证据，增强单位、范围与变更影响核对。
 - 提供 3 种工作模式、9 个子 Agent 角色模板，以及需求、接口、测试和交接模板。
 
 ## 快速开始
@@ -36,4 +36,4 @@ python -X utf8 -B embedded-firmware-engineer/examples/run_examples.py --cc gcc
 
 ## 项目文档
 
-[Skill 定义](embedded-firmware-engineer/SKILL.md) · [验收报告](embedded-firmware-engineer/FINAL_ACCEPTANCE_REPORT.md) · [实施计划](IMPLEMENTATION_PLAN.md) · [变更记录](embedded-firmware-engineer/CHANGELOG.md) · [Apache-2.0 许可证](LICENSE)
+[Skill 定义](embedded-firmware-engineer/SKILL.md) · [V1.1 验收](V1_1_ACCEPTANCE_REPORT.md) · [V1.1 测试](V1_1_TEST_REPORT.md) · [V1.1 差距分析](V1_1_GAP_ANALYSIS.md) · [V1.0 验收](embedded-firmware-engineer/FINAL_ACCEPTANCE_REPORT.md) · [变更记录](embedded-firmware-engineer/CHANGELOG.md) · [Apache-2.0 许可证](LICENSE)

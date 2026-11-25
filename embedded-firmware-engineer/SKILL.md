@@ -19,7 +19,7 @@ license: Apache-2.0
 
 1. 将任务归入新建、增改、移植、RTOS、驱动、调试/审查/优化或构建维护。小修先确认相关事实、改动和验证，按需使用现有记录。识别已有文档和 `.embedded/`，按 [工程接手与追溯](references/01_project_management/workflow.md) 恢复，再决定是否初始化。新项目邀请用户指定 A/B/C，未指定时用 B 继续可逆工作。
 2. A 严格交互模式在需求、硬件资源、架构、接口和关键方案处等确认。B 自主工程师模式通常自行推进，重大不确定性、P0、待决或越权时暂停依赖工作。C 高度自主模式在授权范围内完成修改、测试、修复和集成，工程底线仍适用。项目上下文记录切换和范围。
-3. 新项目或新增工程基线时，先扫描和核对目标板、芯片、工具链及 RTOS，再登记资料、确认权威性、检查冲突、确认需求和基线。明确分层、模块、接口、测试与验收条件后实施。现有项目的结构可用显式映射接入。
+3. 新项目或新增工程基线时，先扫描和核对目标板、芯片、工具链及 RTOS，再登记资料、提取可定位的候选、确认权威性、检查冲突、确认需求和基线。明确分层、模块、接口、测试与验收条件后实施。现有项目的结构可用显式映射接入。
 4. 并行开发前确认接口、文件所有权、基线和集成验证。由项目协调者分发最少上下文，按实际能力启动已授权的子 Agent。工程记录与 Git 保持长期上下文。按 [协作与恢复](references/08_multi_agent/collaboration.md) 交接和集成。
 5. 通过已有入口实现和验证。审查资源、并发、边界、错误恢复和分层。区分编译、链接、静态检查、主机/目标测试和实板验证。交付关联需求、文件、决策、遗留问题、证据和后续动作。按 [交付及证据](references/09_documentation/delivery.md) 同步其权威记录。
 
@@ -37,8 +37,9 @@ license: Apache-2.0
 | 选型、跨 MCU 移植或性能预算 | [平台证据与移植](references/05_platforms/porting.md) |
 | 构建和嵌入式调试 | [工具链与调试](references/06_build_and_debug/build-debug.md) |
 | 代码审查、回归、集成和验收 | [质量验证](references/07_quality_assurance/verification.md) |
+| C/C++ 资源、中断、ABI、启动和链接 | [C/C++ 与构建审查](references/07_quality_assurance/c-cpp.md) |
 | 多 Agent、Git 工作区及会话恢复 | [协作与恢复](references/08_multi_agent/collaboration.md) |
 | 文档维护和任务交付 | [交付及证据](references/09_documentation/delivery.md) |
 | 启用自动化或编辑结构化记录 | [命令与数据契约](references/00_core/automation.md) |
 
-自动化工具使用 Python 3.10+。运行 `python <Skill目录>/scripts/<脚本>.py --help` 查看选项，再按数据契约运行初始化、扫描、资料登记、变化检查、追溯、架构与项目校验。首次登记先预览。哈希基线推进以审查通过的文件和散列为准。脚本输出只支持其明示的验证层，语义判断、工程决策和实板验证需要独立证据。
+自动化工具使用 Python 3.10+。运行 `python <Skill目录>/scripts/<脚本>.py --help` 查看选项。首次登记先预览，基线推进以审查通过的散列为准。恢复前核对任务所有权、接口锁和 Git 状态。通过结构化执行日志确认验证状态，旧证据按 [质量验证](references/07_quality_assurance/verification.md) 迁移。语义判断、工程决策和实板验证需要独立证据。
