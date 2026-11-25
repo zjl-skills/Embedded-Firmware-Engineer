@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="210" viewBox="0 0 560 210">
+  <title>BM-SIM-R1 schematic fragment</title>
+  <desc>Symbolic host fixture, independent of STM32 physical pad numbers.</desc>
+  <rect width="560" height="210" fill="#f5f7fb"/>
+  <g stroke="#20487a" stroke-width="2" fill="none">
+    <rect x="26" y="56" width="167" height="104" rx="4"/>
+    <path d="M193 110 H385 M385 96 V124 L409 110 Z M409 96 V124 M409 110 H506 M506 110 V140 M494 140 H518"/>
+    <circle cx="225" cy="110" r="3" fill="#20487a"/>
+  </g>
+  <g font-family="sans-serif" fill="#132943" font-size="15">
+    <text id="board-scope" x="25" y="32">BM-SIM-R1</text>
+    <text x="42" y="83">U1 MCU model</text>
+    <text id="board-pad" x="66" y="114">SIM_PAD_2</text>
+    <text id="signal-label" x="240" y="102">LED_SIM</text>
+    <text x="425" y="98">LED model</text>
+    <text x="418" y="164">Return reference</text>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+{
+  "scope": "BM-SIM-R1",
+  "mcus": ["STM32F103C8T6"],
+  "build_systems": ["Make"],
+  "rtos": null,
+  "include_dirs": ["src"],
+  "modules": [
+    {"id": "MOD-BSP", "prefix": "src/bsp", "layer": 2, "interface": "src/bsp/board_io.h", "code": ["src/bsp/board_io.c"], "depends_on": []},
+    {"id": "MOD-HEARTBEAT", "prefix": "src/service", "layer": 5, "interface": "src/service/heartbeat.h", "code": ["src/service/heartbeat.c"], "depends_on": ["MOD-BSP"]}
+  ],
+  "test_source": "tests/test_heartbeat.c",
+  "profiles": [
+    {"id": "HOST-BAREMETAL", "sources": ["src/bsp/board_io.c", "src/service/heartbeat.c", "tests/test_heartbeat.c"], "expected_stdout": "PASS heartbeat: timing, wraparound, invalid period"}
+  ]
+}

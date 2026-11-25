@@ -1,0 +1,2 @@
+scope,reference,signal,pad
+GD-SIM-R1,U1,SAMPLE_READY,SIM_IRQ_3

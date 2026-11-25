@@ -1,0 +1,4 @@
+interface:
+  display_name: "Embedded Firmware Engineer"
+  short_description: "面向单片机固件，以原理图和器件资料驱动架构、开发、调试及工程验证"
+  default_prompt: "使用 $embedded-firmware-engineer 接手当前固件项目，核对硬件基线、需求和构建入口。"

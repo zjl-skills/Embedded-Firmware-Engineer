@@ -1,0 +1,17 @@
+{
+  "scope": "PORT-SIM-R2",
+  "mcus": ["STM32F103C8T6", "CH32V203C8T6"],
+  "build_systems": ["Keil MDK", "Make"],
+  "rtos": null,
+  "include_dirs": ["src"],
+  "existing_context": "# 已有项目上下文\n保留旧工程配置，确认端口契约后分阶段迁移。\n",
+  "modules": [
+    {"id": "MOD-PORT", "prefix": "src/bsp", "layer": 2, "interface": "src/bsp/uart_port.h", "code": ["src/bsp/uart_legacy.c", "src/bsp/uart_target.c"], "depends_on": []},
+    {"id": "MOD-WIRE", "prefix": "src/service", "layer": 5, "interface": "src/service/wire.h", "code": ["src/service/wire.c"], "depends_on": ["MOD-PORT"]}
+  ],
+  "test_source": "tests/test_uart_migration.c",
+  "profiles": [
+    {"id": "HOST-LEGACY", "sources": ["src/bsp/uart_legacy.c", "src/service/wire.c", "tests/test_uart_migration.c"], "expected_stdout": "PASS migration: busy, encoded byte, retry, invalid handle"},
+    {"id": "HOST-TARGET", "sources": ["src/bsp/uart_target.c", "src/service/wire.c", "tests/test_uart_migration.c"], "expected_stdout": "PASS migration: busy, encoded byte, retry, invalid handle"}
+  ]
+}

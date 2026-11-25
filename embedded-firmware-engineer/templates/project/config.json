@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "mode": "B",
+  "coding_standard": null,
+  "exclude_dirs": [".venv", "venv", "node_modules", "build", "dist"],
+  "document_roots": ["."],
+  "architecture": {
+    "layers": [],
+    "include_dirs": [],
+    "application_forbidden_includes": [],
+    "application_forbidden_symbols": [],
+    "exceptions": []
+  }
+}

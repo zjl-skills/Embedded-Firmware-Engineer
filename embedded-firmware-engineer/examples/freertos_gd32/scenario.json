@@ -1,0 +1,15 @@
+{
+  "scope": "GD-SIM-R1",
+  "mcus": ["GD32F303VCT6"],
+  "build_systems": ["Make"],
+  "rtos": "FreeRTOS",
+  "include_dirs": ["src", "tests/freertos_stub"],
+  "modules": [
+    {"id": "MOD-OS", "prefix": "src/os", "layer": 4, "interface": "src/os/os_mailbox.h", "code": ["src/os/os_mailbox.c"], "depends_on": []},
+    {"id": "MOD-TLM", "prefix": "src/service", "layer": 5, "interface": "src/service/telemetry.h", "code": ["src/service/telemetry.c"], "depends_on": ["MOD-OS"]}
+  ],
+  "test_source": "tests/test_telemetry.c",
+  "profiles": [
+    {"id": "HOST-QUEUE-STUB", "sources": ["src/os/os_mailbox.c", "src/service/telemetry.c", "tests/test_telemetry.c"], "expected_stdout": "PASS telemetry: zero wait, backpressure, recovery"}
+  ]
+}

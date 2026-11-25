@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="210" viewBox="0 0 560 210">
+  <title>GD-SIM-R1 schematic fragment</title>
+  <desc>Symbolic host fixture, independent of GD32 physical pad numbers.</desc>
+  <rect width="560" height="210" fill="#f5f7fb"/>
+  <g stroke="#20487a" stroke-width="2" fill="none">
+    <rect x="25" y="60" width="164" height="101" rx="4"/>
+    <rect x="400" y="60" width="135" height="101" rx="4"/>
+    <path d="M400 111 H189 M196 106 L189 111 L196 116"/>
+  </g>
+  <g fill="#132943" font-family="sans-serif" font-size="15">
+    <text id="board-scope" x="26" y="32">GD-SIM-R1</text>
+    <text x="42" y="88">U1 MCU model</text>
+    <text id="board-pad" x="51" y="115">SIM_IRQ_3</text>
+    <text id="signal-label" x="231" y="101">SAMPLE_READY</text>
+    <text x="420" y="92">U2 sample</text>
+    <text x="420" y="119">source model</text>
+  </g>
+</svg>

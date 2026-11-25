@@ -1,0 +1,2 @@
+scope,reference,signal,pad
+PORT-SIM-R2,U1,UART_TX_SIM,SIM_UART_TX_B
