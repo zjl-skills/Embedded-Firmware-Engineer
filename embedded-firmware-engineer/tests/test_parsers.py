@@ -9,8 +9,8 @@ from support import ProjectCase
 
 
 class ParserTests(ProjectCase):
-    def parse(self, path, *, code=0):
-        return self.report("parse_documents", "--file", path, code=code)["documents"][0]
+    def parse(self, path, *options, code=0):
+        return self.report("parse_documents", "--file", path, *options, code=code)["documents"][0]
 
     def package(self, path, parts):
         file = self.put(path, b"")
@@ -59,6 +59,9 @@ class ParserTests(ProjectCase):
         facts = self.parse("board.docx")["facts"]
         self.assertEqual({row["category"] for row in facts}, {"paragraph", "image", "table_row"})
         self.assertEqual(next(row for row in facts if row["category"] == "table_row")["location"]["block"], 2)
+        self.assertNotIn("image_data", next(row for row in facts if row["category"] == "image")["content"])
+        image = next(row for row in self.parse("board.docx", "--include-images")["facts"] if row["category"] == "image")
+        self.assertEqual(base64.b64decode(image["content"]["image_data"]["value"]), b"\x89PNG")
         self.package("board.pptx", {
             "ppt/presentation.xml": '<presentation xmlns:r="urn:r"><sldId id="9" r:id="s"/></presentation>',
             "ppt/_rels/presentation.xml.rels": '<Relationships><Relationship Id="s" Target="slides/slide3.xml"/></Relationships>',
@@ -110,29 +113,40 @@ class ParserTests(ProjectCase):
             self.assertEqual(self.parse("board.yml", code=1)["status"], "unavailable")
 
     def test_real_pdf_has_page_location_and_scanned_page_is_partial(self):
-        draw = b"BT /F1 12 Tf 10 80 Td (Voltage 3.3 V) Tj ET"
+        draw = (b"BT /F1 12 Tf 10 80 Td (Voltage 3.3 V) Tj ET\n"
+                b"10 10 m 110 10 l S 10 30 m 110 30 l S 10 50 m 110 50 l S\n"
+                b"10 10 m 10 50 l S 60 10 m 60 50 l S 110 10 m 110 50 l S\n"
+                b"BT /F1 9 Tf 15 38 Td (Pin) Tj ET\nq 20 0 0 20 125 30 cm /Im1 Do Q")
         objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>",
-                   b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 150 100] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+                   b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 160 100] /Resources << /Font << /F1 4 0 R >> /XObject << /Im1 7 0 R >> >> /Contents 5 0 R >>",
                    b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
                    b"<< /Length %d >>\nstream\n" % len(draw) + draw + b"\nendstream",
-                   b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 150 100] >>"]
+                   b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 160 100] >>",
+                   b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\n"
+                   b"\xFF\x00\x00\nendstream"]
         content = bytearray(b"%PDF-1.4\n")
         offsets = []
         for number, obj in enumerate(objects, 1):
             offsets.append(len(content))
             content.extend(b"%d 0 obj\n" % number + obj + b"\nendobj\n")
         xref = len(content)
-        content.extend(b"xref\n0 7\n0000000000 65535 f \n")
+        content.extend(b"xref\n0 8\n0000000000 65535 f \n")
         for offset in offsets:
             content.extend(b"%010d 00000 n \n" % offset)
-        content.extend(b"trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % xref)
+        content.extend(b"trailer\n<< /Size 8 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % xref)
         self.put("board.pdf", bytes(content))
         if importlib.util.find_spec("pdfplumber") or shutil.which("pdftotext"):
-            report = self.parse("board.pdf")
+            report = self.parse("board.pdf", "--include-images")
             self.assertEqual(report["status"], "partial")
             page, = [fact for fact in report["facts"] if fact["category"] == "page_text"]
             self.assertEqual(page["location"], {"page": 1})
             self.assertIn("Voltage 3.3 V", page["raw"])
+            if report["method"] == "pdfplumber":
+                table, = [fact for fact in report["facts"] if fact["category"] == "table"]
+                self.assertEqual(table["content"][0][0], "Pin")
+                image, = [fact for fact in report["facts"] if fact["category"] == "image"]
+                self.assertEqual(image["location"]["page"], 1)
+                self.assertTrue(base64.b64decode(image["content"]["image_data"]["value"]).startswith(b"\x89PNG"))
         else:
             self.assertIn("pdfplumber", self.parse("board.pdf", code=1)["error"])
 

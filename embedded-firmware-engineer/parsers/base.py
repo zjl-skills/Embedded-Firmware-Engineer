@@ -1,6 +1,7 @@
 """统一资料事实、原始定位及有界文件读取。"""
 
 from dataclasses import dataclass, field
+from base64 import b64encode
 import hashlib
 import json
 import posixpath
@@ -11,6 +12,8 @@ from zipfile import ZipFile
 MAX_FILE = 32 * 1024 * 1024
 MAX_PART = 8 * 1024 * 1024
 MAX_FACTS = 4000
+MAX_IMAGE = 512 * 1024
+MAX_IMAGE_TOTAL = 2 * 1024 * 1024
 
 
 class Unavailable(ValueError):
@@ -33,6 +36,8 @@ class Result:
     facts: list = field(default_factory=list)
     limitations: list = field(default_factory=list)
     error: str | None = None
+    include_images: bool = False
+    image_bytes_used: int = 0
 
     def add(self, category, content, raw, location, *, confidence="high", evidence="document"):
         if len(self.facts) >= MAX_FACTS:
@@ -48,6 +53,14 @@ class Result:
         self.status = "partial"
         if message not in self.limitations:
             self.limitations.append(message)
+
+    def image_data(self, data, media_type, method):
+        if len(data) > MAX_IMAGE or self.image_bytes_used + len(data) > MAX_IMAGE_TOTAL:
+            self.partial("图像数据超限，报告保留原资料定位。")
+            return {}
+        self.image_bytes_used += len(data)
+        return {"image_data": {"encoding": "base64", "media_type": media_type, "method": method,
+                               "sha256": hashlib.sha256(data).hexdigest(), "value": b64encode(data).decode("ascii")}}
 
 
 class BaseParser:

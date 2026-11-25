@@ -5,7 +5,7 @@
 | 阶段 | 已执行检查及结果 |
 | --- | --- |
 | 0 | V1.0 全量 38 项，37 通过、1 跳过，命令退出 0。Skill 格式和三个原始示例通过。 |
-| 1 | 8 项解析测试通过。测试 PDF 降级与实装 PDF 后端两条路径，核对页定位、无文本页、XLSX 公式缓存、DOCX 图像/表格、PPTX 页序、Draw.io、VSDX、EDA 网表、SVG 候选、源码和不支持格式。 |
+| 1 | 8 项解析测试通过。覆盖 PDF 降级与实装后端，核对页定位、表格、图像区域渲染及无文本页，也覆盖 XLSX 公式缓存、DOCX 表格与原始嵌入图像、PPTX 页序、Draw.io、VSDX、EDA、SVG、源码和不支持格式。 |
 | 2 | 4 项单位和范围测试、6 项文档变更测试通过。覆盖十类工程量、开闭区间、百分比和绝对容差、版次/变体、P0 处理、追溯到交付及只读输出。 |
 | 3 | 3 项协作测试及真实三个 Git 工作树的合并通过。接口哈希一致，实际发现故意加入的所有权冲突，各工作树恢复四份记录，宿主集成输出 `PASS serial collaboration`。 |
 | 4 | 6 项测试证据测试通过。验证日志和输入篡改、实际失败、错误需求/验证类别、旧证据兼容及授权记录变更。原三个示例用新证据执行通过。 |
@@ -31,4 +31,4 @@ python -X utf8 -B embedded-firmware-engineer/examples/collaboration/run_collabor
 
 ## GitHub Actions
 
-工作流配置 Ubuntu 和 Windows 各四个 Python 版本。PR 上的运行结果待实际回写。[工作流](.github/workflows/ci.yml)
+首轮 PR 提交 `69b4e48cb19bc3bbd179af1b7b47b7e3ad1a23ee` 的八个矩阵作业全部成功。独立查看 Windows/Python 3.10 与 Ubuntu/Python 3.13 日志，均执行了 63 项测试，原生链接路径保护用例为 `ok`，UART 工作树集成输出 `PASS serial collaboration`。第二次提交补充了 PDF 图像区域及 Office 嵌入图像的提取和断言，当前分支的最新检查见 PR。[开发工作流](.github/workflows/ci.yml) · [首轮运行](https://github.com/zjl-skills/Embedded-Firmware-Engineer/actions/runs/45605621848) · [PR 最新检查](https://github.com/zjl-skills/Embedded-Firmware-Engineer/pull/1/checks)

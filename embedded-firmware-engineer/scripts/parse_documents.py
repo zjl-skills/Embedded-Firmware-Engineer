@@ -29,7 +29,7 @@ def main(args):
         match = observed["sha256"] == old["sha256"] if "sha256" in observed and "sha256" in old else None
         version = (doc.get("version") if match else None) or observed.get("observed_version")
         result = extract(path, name, document_id=doc.get("id"), version=version,
-                         scope=(doc.get("scope") or None) if match else None)
+                         scope=(doc.get("scope") or None) if match else None, include_images=args.include_images)
         if observed:
             try:
                 after = path.stat()
@@ -52,4 +52,5 @@ if __name__ == "__main__":
     cli.add_argument("--file", action="append", default=[], help="项目相对源文件，可重复")
     cli.add_argument("--capabilities", action="store_true", help="列出当前适配器能力和降级路径")
     cli.add_argument("--strict", action="store_true", help="部分可读也返回 1")
+    cli.add_argument("--include-images", action="store_true", help="在报告中附带限额内的 Office 原始嵌入图像及 PDF 图像区域")
     raise SystemExit(cli_main(cli, main))

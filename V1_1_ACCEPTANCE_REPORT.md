@@ -12,7 +12,7 @@
 - [x] Codex 角色按实际槽位分派，独立模块在实际 Git 工作树并行，接口保持锁定，文件冲突被发现，交接和集成通过。
 - [x] 执行记录核验命令、退出码、输出、输入源及散列。结构化策略约束 `Verified` 和 `Accepted`，旧状态另有兼容标记。
 - [x] 补充 C/C++ 工程规范、静态检查、栈堆分析、中断、ABI、启动与链接审查。
-- [ ] Windows/Ubuntu × Python 3.10–3.13 的 GitHub Actions 实际结果待回写。
+- [x] Windows/Ubuntu × Python 3.10–3.13 的八个 GitHub Actions 矩阵作业实际通过。最新提交的独立运行见 [PR 检查](https://github.com/zjl-skills/Embedded-Firmware-Engineer/pull/1/checks)。
 - [x] 新能力配套单元测试，尚待验证的能力在下段记录。[测试报告](V1_1_TEST_REPORT.md)
 
 ## 验证范围

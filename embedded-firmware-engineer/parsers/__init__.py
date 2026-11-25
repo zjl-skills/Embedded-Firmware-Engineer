@@ -22,8 +22,8 @@ def capabilities():
              "fallback": adapter.fallback} for adapter in ADAPTERS]
 
 
-def extract(path, relative, *, document_id=None, version=None, scope=None):
-    result = Result(relative, document_id, version, scope, None)
+def extract(path, relative, *, document_id=None, version=None, scope=None, include_images=False):
+    result = Result(relative, document_id, version, scope, None, include_images=include_images)
     try:
         if not path.is_file():
             raise OSError("源文件不存在或不可读")

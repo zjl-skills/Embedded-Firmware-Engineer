@@ -10,7 +10,7 @@ import subprocess
 from urllib.parse import unquote
 import zlib
 
-from .base import MAX_PART, BaseParser, ExtractionLimit, Package, Unavailable, attribute, elements, xml
+from .base import MAX_IMAGE_TOTAL, MAX_PART, BaseParser, ExtractionLimit, Package, Unavailable, attribute, elements, xml
 
 
 def run_tool(command):
@@ -53,6 +53,7 @@ class PdfParser(BaseParser):
             raise Unavailable(self.fallback) from exc
         try:
             with pdfplumber.open(path) as document:
+                renders = 0
                 for page in document.pages:
                     number = page.page_number
                     self.page_text(report, number, page.extract_text() or "")
@@ -63,13 +64,35 @@ class PdfParser(BaseParser):
                     for index, image in enumerate(page.images, 1):
                         bbox = [float(image[key]) for key in ("x0", "top", "x1", "bottom")]
                         name = str(image.get("name", ""))
-                        report.add("image", {"name": name, "bbox": bbox}, name, {"page": number, "image": index, "bbox": bbox})
+                        content = {"name": name, "bbox": bbox}
+                        if report.include_images:
+                            renders += 1
+                            content.update(self.render_region(page, bbox, renders, report))
+                        report.add("image", content, name, {"page": number, "image": index, "bbox": bbox})
                     page.close()
         except (ExtractionLimit, Unavailable):
             raise
         except Exception as exc:
             raise ValueError(f"PDF 读取失败: {exc}") from exc
         report.limitations.append("图像记录提供页面坐标。复杂表格和图像内容需要复核。")
+
+    @staticmethod
+    def render_region(page, bbox, index, report):
+        if index > 8 or max(page.width, page.height) > 2048 or report.image_bytes_used >= MAX_IMAGE_TOTAL:
+            report.partial("PDF 图像渲染超过处理限额，报告保留页面定位。")
+            return {}
+        left, top, right, bottom = map(float, page.bbox)
+        clipped = max(left, bbox[0]), max(top, bbox[1]), min(right, bbox[2]), min(bottom, bbox[3])
+        if clipped[0] >= clipped[2] or clipped[1] >= clipped[3]:
+            report.partial("PDF 图像区域在可渲染页框外，报告保留原始坐标。")
+            return {}
+        output = io.BytesIO()
+        try:
+            page.crop(clipped, strict=False).to_image(resolution=96).original.save(output, format="PNG")
+        except Exception as exc:
+            report.partial(f"PDF 图像区域未能渲染: {type(exc).__name__}。请查看原页。")
+            return {}
+        return report.image_data(output.getvalue(), "image/png", "pdf-rendered-region")
 
     @staticmethod
     def page_text(report, number, page):

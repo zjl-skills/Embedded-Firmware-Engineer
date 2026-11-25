@@ -8,14 +8,16 @@
 
 | 格式 | 实际适配器和降级 |
 | --- | --- |
-| PDF | `pdfplumber` 支持页面文字、表格候选和图像位置。`pdftotext` 支持页文字。无文本页提示 OCR/视觉复核。 |
+| PDF | `pdfplumber` 支持页面文字、表格候选、图像位置和按需的页面区域 PNG。`pdftotext` 支持页文字。无文本页提示 OCR/视觉复核。 |
 | PNG、JPG、SVG | SVG 读取带图元定位的文字；栅格图用 Tesseract TSV 或 Pillow 元数据。缺少工具时交给视觉检查或请求标注导出。 |
-| DOCX、XLSX、PPTX、CSV | 标准库读取包关系、文档块、表行、单元格坐标、缓存值/公式、幻灯片及图像成员位置。旧 DOC/XLS/PPT 需相应新格式或 PDF 导出。 |
+| DOCX、XLSX、PPTX、CSV | 标准库读取包关系、文档块、表行、单元格坐标、缓存值/公式、幻灯片及图像成员位置。DOCX/PPTX 可按需提取嵌入图像字节。旧 DOC/XLS/PPT 需相应新格式或 PDF 导出。 |
 | Draw.io、Visio | 读取压缩/明文 Draw.io 模型和 VSDX 内部页图元。旧 VSD 需 VSDX、SVG 或 PDF 导出。 |
 | KiCad、Altium | KiCad S-expression/导出网表和 Altium 可读记录、项目设置。专有二进制资料走通用网表、BOM CSV 或带定位图面导出。 |
 | C/C++、JSON、XML、YAML、TXT、MD | 读取文本，保留源码行、JSON 根指针、XML 元素序号及 YAML 词法位置。YAML 需要 PyYAML。源码和工程配置仍需实际构建核对。 |
 
 状态包含 `parsed`、`partial`、`unavailable`、`unsupported`、`error`。`--strict` 将部分提取也作为退出 1。包大小、XML 成员及事实数量设有限额。Office 和 Visio 解析使用内部关系，不访问外链。SVG/OCR 只产生图面候选，`netlist` 表示可定位的网表记录。两者的实板适用性由批准的资料和硬件验收决定。[命令与数据契约](../00_core/automation.md)
+
+默认只输出图片定位。显式添加 `--include-images` 后，报告可附 Base64 图像、媒体类型及散列。单张上限 512 KiB，每份资料总计 2 MiB。PDF 输出是页面区域渲染，DOCX/PPTX 输出是包内的原始图像数据。
 
 | 输入 | 阅读与复核方法 | 能力不足时索取 |
 | --- | --- | --- |

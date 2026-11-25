@@ -36,4 +36,4 @@ python -X utf8 -B embedded-firmware-engineer/examples/run_examples.py --cc gcc
 
 ## 项目文档
 
-[Skill 定义](embedded-firmware-engineer/SKILL.md) · [V1.1 验收](V1_1_ACCEPTANCE_REPORT.md) · [V1.1 测试](V1_1_TEST_REPORT.md) · [V1.1 差距分析](V1_1_GAP_ANALYSIS.md) · [V1.0 验收](embedded-firmware-engineer/FINAL_ACCEPTANCE_REPORT.md) · [变更记录](embedded-firmware-engineer/CHANGELOG.md) · [Apache-2.0 许可证](LICENSE)
+[Skill 定义](embedded-firmware-engineer/SKILL.md) · [V1.1 验收](V1_1_ACCEPTANCE_REPORT.md) · [V1.1 测试](V1_1_TEST_REPORT.md) · [V1.1 差距分析](V1_1_GAP_ANALYSIS.md) · [V1.0 验收](embedded-firmware-engineer/FINAL_ACCEPTANCE_REPORT.md) · [V1.0 实施计划](IMPLEMENTATION_PLAN.md) · [变更记录](embedded-firmware-engineer/CHANGELOG.md) · [Apache-2.0 许可证](LICENSE)

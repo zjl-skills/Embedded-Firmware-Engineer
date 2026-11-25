@@ -2,8 +2,14 @@
 
 import csv
 import io
+from pathlib import PurePosixPath
 
-from .base import BaseParser, Package, Unavailable, attribute, children, elements, read_text, tag
+from .base import MAX_IMAGE, MAX_IMAGE_TOTAL, BaseParser, Package, Unavailable, attribute, children, elements, read_text, tag
+
+
+IMAGE_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+               ".svg": "image/svg+xml", ".bmp": "image/bmp", ".tif": "image/tiff", ".tiff": "image/tiff",
+               ".webp": "image/webp", ".emf": "image/emf", ".wmf": "image/wmf"}
 
 
 def text_in(node):
@@ -19,7 +25,15 @@ def images(package, part, body, report, location):
         rel = attribute(image, "embed") or attribute(image, "link")
         asset = rels.get(rel)
         if asset and asset in package.namelist():
-            report.add("image", {"package_part": asset}, rel, {**location, "image": index})
+            content = {"package_part": asset}
+            if report.include_images:
+                member = package.getinfo(asset)
+                if member.file_size > MAX_IMAGE or report.image_bytes_used + member.file_size > MAX_IMAGE_TOTAL:
+                    report.partial("嵌入图像数据超限，报告保留包成员定位。")
+                else:
+                    media_type = IMAGE_MEDIA.get(PurePosixPath(asset).suffix.lower(), "application/octet-stream")
+                    content.update(report.image_data(package.read(member), media_type, "ooxml-embedded"))
+            report.add("image", content, rel, {**location, "image": index})
         else:
             report.partial("发现外链或缺失的图像关系，未访问外部资源。")
 
