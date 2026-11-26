@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "evidence_policy": "structured",
   "requirements": [],
   "modules": [],
   "tests": []

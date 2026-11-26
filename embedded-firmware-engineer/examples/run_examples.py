@@ -14,6 +14,9 @@ from xml.etree import ElementTree
 
 HERE = Path(__file__).resolve().parent
 SCRIPTS = HERE.parent / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+from evidence_data import record_execution
+
 CASES = ("baremetal_stm32", "freertos_gd32", "existing_project_migration")
 NOTE = "docs/pin-note.md"
 
@@ -93,10 +96,11 @@ def prepare_trace(root, scenario, documents):
                         "depends_on": module["depends_on"]})
         links.append({"module": module["id"], "interface": interface, "code": module["code"],
                       "tests": [test["id"] for test in tests]})
-    return {"schema_version": 1, "modules": modules, "tests": tests, "requirements": [
+    return {"schema_version": 1, "evidence_policy": "structured", "modules": modules, "tests": tests, "requirements": [
         {"id": requirement["ID"], "title": "模拟场景行为", "priority": "P1", "status": "Implemented",
          "source": {"document": documents["docs/requirements.md"]["id"], "locator": "Acceptance 行"},
-         "acceptance": requirement["Acceptance"], "links": links}
+         "acceptance": requirement["Acceptance"], "links": links, "verification_kinds": ["Host Integration Test"],
+         "deliverables": [".embedded/reports/DELIVERY.md"]}
     ]}
 
 
@@ -136,6 +140,8 @@ def resolve_fixture(root, state, documents, wire, note, trace, reports):
     expect(drift["impact"]["requirements"] == [trace["requirements"][0]["id"]]
            and set(drift["impact"]["tests"]) == {test["id"] for test in trace["tests"]}, "影响链缺少需求或测试")
     write_json(reports / "change-impact.json", drift)
+    execute(root, [sys.executable, "-B", str(SCRIPTS / "check_document_changes.py"), str(root), "--format", "md",
+                   "--output", ".embedded/reports/DOCUMENT_IMPACT.md"])
     note_id = documents[NOTE]["id"]
     accepted = command(root, "inventory_documents", "--update-registry", "--capture-text", "--accept", f"{note_id}={drift['current']['sha256']}")
     expect(accepted["refreshed"] == [note_id], "未按已审查的 SHA-256 推进资料")
@@ -197,6 +203,8 @@ def host_profiles(root, state, scenario, compiler, trace):
     tested = []
     expected_code = {path for module in scenario["modules"] for path in module["code"]}
     actual_code = set()
+    compiler_version = execute(root, [compiler, "--version"]).splitlines()[0]
+    requirement = trace["requirements"][0]["id"]
     for profile, test in zip(scenario["profiles"], trace["tests"]):
         out = Path("build") / profile["id"]
         (root / out).mkdir(parents=True)
@@ -212,11 +220,21 @@ def host_profiles(root, state, scenario, compiler, trace):
             actual_code.add(path)
         binary = out / ("run.exe" if os.name == "nt" else "run")
         execute(root, [compiler, *objects, "-o", binary.as_posix()], journal=journal)
-        output = execute(root, [str(root / binary)], journal=journal)
+        evidence_file = f".embedded/reports/{profile['id']}.evidence.json"
+        log_file = f".embedded/reports/{profile['id']}.execution.json"
+        proof = record_execution(root, test_id=test["id"], requirements=[requirement], kind="Host Integration Test",
+                                 command=[str(root / binary)], cwd=".", toolchain=compiler_version, notes="宿主替身",
+                                 expected={"exit_code": 0, "stdout_contains": profile["expected_stdout"]},
+                                 inputs=[*profile["sources"], *(module["interface"] for module in scenario["modules"])],
+                                 manifest_path=evidence_file, log_path=log_file)
+        execution = read_json(root / log_file)
+        journal.append({key: execution[key] for key in ("command", "exit_code", "stdout", "stderr")})
+        output = execution["stdout"].strip()
+        expect(proof["status"] == "Passed", "宿主测试证据显示测试未通过")
         expect(output == profile["expected_stdout"], f"宿主测试输出不符: {output}")
         evidence = state / "reports" / f"{profile['id']}.json"
         write_json(evidence, journal)
-        test.update(status="Passed", evidence=evidence.relative_to(root).as_posix())
+        test.update(status="Passed", evidence=evidence_file)
         tested.append({"profile": profile["id"], "compiled_units": len(objects), "linked": True, "test_output": output})
     expect(expected_code <= actual_code, "存在未编译的纳管实现文件")
     return tested
@@ -245,6 +263,10 @@ def run_case(root, name, compiler, git):
     reports = state / "reports"
     reports.mkdir()
     write_json(reports / "scan.json", scan)
+    parsed = command(root, "parse_documents", "--file", "docs/schematic.svg", "--file", "docs/netlist.csv", "--file", "docs/device.md")
+    expect(any(row["location"].get("id") == "board-pad" and row["raw"] == wire["pad"]
+               for row in parsed["documents"][0]["facts"]), "解析报告未定位模拟焊盘")
+    write_json(reports / "parsed.json", parsed)
     config = read_json(state / "config.json")
     config["document_roots"] = ["docs"]
     config["architecture"].update(include_dirs=scenario["include_dirs"], application_forbidden_symbols=["HAL_*"],

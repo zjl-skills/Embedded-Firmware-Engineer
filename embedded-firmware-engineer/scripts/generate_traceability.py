@@ -25,6 +25,8 @@ def markdown(report):
     lines.extend(f"- {cell(gap['kind'])} · {cell(gap['id'])} {cell(gap['detail'])}".rstrip() for gap in report["gaps"])
     if not report["gaps"]:
         lines.append("已登记范围内未发现追溯缺口。")
+    if report["legacy_test_evidence"]:
+        lines.extend(("", "旧版证据待按 V1.1 重测核验。"))
     return "\n".join(lines) + "\n"
 
 
@@ -40,7 +42,9 @@ def main(args):
         extra_code.update(path.relative_to(root).as_posix() for path in walk_files(project, config, start)
                           if path.suffix.lower() in {".c", ".cc", ".cpp", ".cxx", ".c++"})
     documents = {row["id"] for row in registry["documents"] if row["status"] in ACTIVE_STATUSES}
-    report = trace_report(root, load_trace(project), documents, extra_code)
+    trace, policy = load_trace(project, with_policy=True)
+    report = trace_report(root, trace, documents, extra_code,
+                          evidence_policy="structured" if args.require_structured_evidence else policy)
     if args.format == "md":
         emit_text(args, project, markdown(report))
     else:
@@ -52,4 +56,5 @@ if __name__ == "__main__":
     cli = parser(__doc__)
     cli.add_argument("--format", choices=("json", "md"), default="json", help="报告格式")
     cli.add_argument("--scan-code", action="append", default=[], help="检查额外源码目录内未关联需求的 C/C++ 文件")
+    cli.add_argument("--require-structured-evidence", action="store_true", help="对旧台账也应用 V1.1 测试证据和验收规则")
     raise SystemExit(cli_main(cli, main))

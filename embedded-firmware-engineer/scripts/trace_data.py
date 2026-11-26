@@ -1,5 +1,6 @@
 """需求、模块设计、接口、代码、测试和验收的结构化关系。"""
 
+from evidence_data import KINDS, verify_acceptance, verify_execution
 from project_data import (
     array_at, object_at, read_json, records_at, relative_name, require, safe_path, state_file, string_at, strings_at,
 )
@@ -15,12 +16,14 @@ def file_reference(root, value, label):
     return value
 
 
-def load_trace(project, *, optional=False):
+def load_trace(project, *, optional=False, with_policy=False):
     root, _ = project
     path = state_file(project, "traceability.json")
     if optional and not path.exists():
-        return {}, {}, {}
+        return (({}, {}, {}), "legacy") if with_policy else ({}, {}, {})
     data = read_json(path)
+    policy = data.get("evidence_policy", "legacy")
+    require(policy in ("legacy", "structured"), "evidence_policy 需要 legacy 或 structured")
     requirements, modules, tests = (records_at(data, key) for key in ("requirements", "modules", "tests"))
     for ident, module in modules.items():
         file_reference(root, module.get("design"), f"{ident}.design")
@@ -39,6 +42,10 @@ def load_trace(project, *, optional=False):
         require(req.get("status") in REQUIREMENT_STATES, f"{ident} 需求状态无效")
         string_at(req.get("acceptance", ""), f"{ident}.acceptance", allow_empty=True)
         file_reference(root, req.get("acceptance_evidence"), f"{ident}.acceptance_evidence")
+        for item in strings_at(req.get("deliverables", []), f"{ident}.deliverables"):
+            file_reference(root, item, f"{ident}.deliverables")
+        kinds = strings_at(req.get("verification_kinds", []), f"{ident}.verification_kinds")
+        require(all(kind in KINDS for kind in kinds), f"{ident} 验证类别无效")
         if req.get("decision") is not None:
             string_at(req["decision"], f"{ident}.decision")
         if req.get("source") is not None:
@@ -52,10 +59,11 @@ def load_trace(project, *, optional=False):
             for item in strings_at(link.get("code", []), f"{ident}.links.code"):
                 file_reference(root, item, f"{ident}.links.code")
             strings_at(link.get("tests", []), f"{ident}.links.tests")
-    return requirements, modules, tests
+    trace = requirements, modules, tests
+    return (trace, policy) if with_policy else trace
 
 
-def trace_report(root, trace, documents, extra_code=()):
+def trace_report(root, trace, documents, extra_code=(), *, evidence_policy="legacy"):
     requirements, modules, tests = trace
     gaps, rows = [], []
 
@@ -78,7 +86,7 @@ def trace_report(root, trace, documents, extra_code=()):
             if not exists(path):
                 gap("missing_code_file", ident, path)
 
-    passed = set()
+    passed = {}
     for ident, test in tests.items():
         if not exists(test["path"]):
             gap("missing_test_file", ident, test["path"])
@@ -86,7 +94,13 @@ def trace_report(root, trace, documents, extra_code=()):
             if not exists(test.get("evidence")):
                 gap("pass_without_evidence", ident, test.get("evidence"))
             elif exists(test["path"]):
-                passed.add(ident)
+                if evidence_policy == "legacy":
+                    passed[ident] = None
+                else:
+                    try:
+                        passed[ident] = verify_execution(root, test["evidence"], ident, test["path"])
+                    except (ValueError, OSError, RuntimeError) as exc:
+                        gap("invalid_test_evidence", ident, str(exc))
 
     traced_code, traced_tests = set(), set()
     for ident, req in requirements.items():
@@ -94,6 +108,8 @@ def trace_report(root, trace, documents, extra_code=()):
         row = {"id": ident, "title": req["title"], "priority": req["priority"], "status": status,
                "source": req.get("source"), "acceptance": req.get("acceptance", ""),
                "acceptance_evidence": req.get("acceptance_evidence"), "links": []}
+        if status in ("Verified", "Accepted") and evidence_policy == "legacy":
+            row["evidence_assurance"] = "legacy_unconfirmed"
         rows.append(row)
         if status in ("Deferred", "Rejected"):
             if not req.get("decision"):
@@ -106,6 +122,8 @@ def trace_report(root, trace, documents, extra_code=()):
         if not req.get("links"):
             gap("missing_implementation_chain", ident, None)
         seen_links = set()
+        verified_records = {}
+        verified_kinds = set()
         for link in req.get("links", []):
             module_id, interface_id = link["module"], link["interface"]
             if (module_id, interface_id) in seen_links:
@@ -132,10 +150,28 @@ def trace_report(root, trace, documents, extra_code=()):
             if linked_tests - tests.keys():
                 gap("unknown_test", ident, sorted(linked_tests - tests.keys()))
             traced_tests.update(linked_tests & tests.keys())
-            if status in ("Verified", "Accepted") and linked_tests - passed:
-                gap("verification_not_proven", ident, sorted(linked_tests - passed))
-        if status == "Accepted" and not exists(row["acceptance_evidence"]):
-            gap("acceptance_not_proven", ident, row["acceptance_evidence"])
+            if status in ("Verified", "Accepted"):
+                proven = set()
+                for test_id in linked_tests & passed.keys():
+                    proof = passed[test_id]
+                    if proof is None or ident in proof["requirement_ids"]:
+                        proven.add(test_id)
+                        if proof is not None:
+                            verified_records[test_id] = proof["record_sha256"]
+                            verified_kinds.add(proof["kind"])
+                if missing := linked_tests - proven:
+                    gap("verification_not_proven", ident, sorted(missing))
+        if status in ("Verified", "Accepted") and evidence_policy == "structured":
+            if missing := set(req.get("verification_kinds", [])) - verified_kinds:
+                gap("verification_kind_missing", ident, sorted(missing))
+        if status == "Accepted":
+            if not exists(row["acceptance_evidence"]):
+                gap("acceptance_not_proven", ident, row["acceptance_evidence"])
+            elif evidence_policy == "structured":
+                try:
+                    verify_acceptance(root, row["acceptance_evidence"], ident, verified_records)
+                except (ValueError, OSError, RuntimeError) as exc:
+                    gap("acceptance_not_proven", ident, str(exc))
 
     all_code = set(extra_code)
     for module in modules.values():
@@ -144,5 +180,7 @@ def trace_report(root, trace, documents, extra_code=()):
         gap("code_without_requirement", path, None)
     for ident in sorted(tests.keys() - traced_tests):
         gap("test_without_requirement", ident, tests[ident]["path"])
-    return {"requirements": rows, "gaps": gaps, "counts": {"requirements": len(requirements), "modules": len(modules),
+    return {"requirements": rows, "gaps": gaps, "evidence_policy": evidence_policy,
+            "legacy_test_evidence": sorted(ident for ident, proof in passed.items() if proof is None),
+            "counts": {"requirements": len(requirements), "modules": len(modules),
                                                            "tests": len(tests), "managed_code_files": len(all_code)}}

@@ -1,6 +1,6 @@
 # Embedded Firmware Engineer
 
-`embedded-firmware-engineer` V1.0 是面向 MCU 固件的 Codex Skill。它为项目接手、原理图核对、需求、架构、驱动、裸机/RTOS、移植、构建调试和协作交付提供约定与工具。默认中文，默认工作模式 B。小任务可以直接使用与改动有关的核对和验证流程。
+`embedded-firmware-engineer` V1.1 是面向 MCU 固件的 Codex Skill。它为项目接手、原理图核对、需求、架构、驱动、裸机/RTOS、移植、构建调试和协作交付提供约定与工具。默认中文，默认工作模式 B。小任务可以直接使用与改动有关的核对和验证流程。
 
 ## 安装与调用
 
@@ -19,6 +19,7 @@ $efwScripts = 'C:\work\embedded-firmware-engineer\scripts'
 python "$efwScripts/scan_project.py" .
 python "$efwScripts/init_project.py" . --mode B --module MOD-BOARD
 python "$efwScripts/inventory_documents.py" .
+python "$efwScripts/parse_documents.py" . --capabilities
 python "$efwScripts/inventory_documents.py" . --update-registry --capture-text
 python "$efwScripts/check_document_changes.py" . --fail-on-change
 ```
@@ -33,6 +34,8 @@ python "$efwScripts/validate_project.py" . --check-hashes --strict
 
 工程事实以文档、版本、范围和定位为依据。手动提取的事实由一致性检查核对结构化明示值。信息冲突在 `ISSUES.md` 和 `DECISIONS.md` 处理。资料变动先审查哈希、版本、正文差异和关联影响，批准后通过 `--accept DOC-ID=SHA256` 推进指纹并同步设计、测试和交接。[资料治理与一致性](references/02_document_analysis/consistency.md)
 
+V1.1 可用 `parse_documents.py . --file docs/board.svg` 生成提取候选，使用 `check_document_changes.py . --format md` 生成变更影响报告。项目需要时启用 `check_collaboration.py` 和 `record_test_evidence.py`。新项目默认验证结构化证据，原有台账可按文档逐步迁移。[命令与兼容策略](references/00_core/automation.md)
+
 ## 复现验收
 
 从本目录执行以下命令。工程演练需要 Git 及支持 GCC/Clang 参数的宿主 C 编译器。`--work-dir <新目录>` 可保留每个工程副本、生成的状态与完整命令日志。`--case` 可选择指定案例。
@@ -42,4 +45,4 @@ python -X utf8 -B -m unittest discover -s tests -v
 python -X utf8 -B examples/run_examples.py --cc gcc
 ```
 
-三个案例覆盖 [STM32 裸机](examples/baremetal_stm32/README.md)、[GD32 + FreeRTOS](examples/freertos_gd32/README.md) 和 [现有工程移植](examples/existing_project_migration/README.md)。实板、目标 SDK、工具链和正式验收依实际项目验证。结果及限制见 [最终验收报告](FINAL_ACCEPTANCE_REPORT.md) 和 [变更记录](CHANGELOG.md)。
+三个案例覆盖 [STM32 裸机](examples/baremetal_stm32/README.md)、[GD32 + FreeRTOS](examples/freertos_gd32/README.md) 和 [现有工程移植](examples/existing_project_migration/README.md)。独立 [UART 协作演练](examples/collaboration/README.md) 覆盖 Git 工作树、接口锁定、交接和集成。实板、目标 SDK、工具链和正式验收依实际项目验证。[V1.0 验收报告](FINAL_ACCEPTANCE_REPORT.md) · [变更记录](CHANGELOG.md)

@@ -1,12 +1,11 @@
 """检查工程初始化、配置、资料登记、追溯以及结构化事实一致性。"""
 
 from collections import Counter, defaultdict
-import hashlib
-import json
 from pathlib import PurePosixPath
 
 from check_architecture import load_rules
 from document_data import ACTIVE_STATUSES, PRIORITIES, fingerprint, load_registry
+from fact_comparison import annotate, pair_reports
 from project_data import (
     DataError, STATE_FILES, cli_main, emit, get_project, load_config, object_at, parser, read_json,
     records_at, require, safe_path, state_file, string_at,
@@ -44,24 +43,16 @@ def inspect_facts(data, documents):
                           "source": source, "document_path": document["path"],
                           "document_version": document.get("version"), "document_status": document["status"],
                           "authority": document["authority"]}
-            if scope is None:
+            enhanced = annotate(row, definition, scope)
+            if scope is None and enhanced["applicability_data"] is None:
                 unconfirmed_scopes.append({"category": category, "key": key, **definition})
             else:
-                groups[category, key, scope].append(definition)
-    conflicts, authority_overlaps = [], []
-    for (category, key, scope), members in sorted(groups.items()):
-        if len({row["value"] for row in members}) > 1:
-            token = json.dumps([category, key, scope], ensure_ascii=False).encode("utf-8")
-            priority = min((row["severity"] for row in members), key=PRIORITIES.index)
-            conflicts.append({"id": "CF-" + hashlib.sha256(token).hexdigest()[:12].upper(), "category": category,
-                              "key": key, "scope": scope, "severity": priority, "definitions": members})
-        authoritative = sorted({row["source"]["document"] for row in members if row["authority"] == "Authoritative"})
-        if len(authoritative) > 1:
-            authority_overlaps.append({"category": category, "key": key, "scope": scope, "documents": authoritative})
-    return conflicts, authority_overlaps, dangling, unconfirmed_scopes
+                groups[category, key].append(enhanced)
+    conflicts, authority_overlaps, comparisons = pair_reports(groups)
+    return conflicts, authority_overlaps, dangling, unconfirmed_scopes, comparisons
 
 
-def validate(project, *, check_hashes=False):
+def validate(project, *, check_hashes=False, require_structured_evidence=False):
     root, _ = project
     issues = []
 
@@ -81,10 +72,14 @@ def validate(project, *, check_hashes=False):
         if path is not None and not path.is_file():
             issue("missing_management_file", name)
     config = attempt("invalid_config", lambda: load_config(project))
-    trace = attempt("invalid_traceability", lambda: load_trace(project))
+    loaded_trace = attempt("invalid_traceability", lambda: load_trace(project, with_policy=True))
+    trace, evidence_policy = loaded_trace if loaded_trace is not None else (None, None)
+    if require_structured_evidence:
+        evidence_policy = "structured"
+    legacy_tests = []
     loaded = attempt("invalid_document_registry", lambda: load_registry(project))
     facts = attempt("invalid_facts", lambda: read_json(state_file(project, "facts.json")))
-    conflicts = []
+    conflicts, comparisons = [], []
 
     if config is not None:
         for name in config["document_roots"]:
@@ -129,7 +124,8 @@ def validate(project, *, check_hashes=False):
                 if current and current["sha256"] != row["fingerprint"]["sha256"]:
                     issue("document_hash_changed", {"id": ident, "path": row["path"], "current": current["sha256"]})
         if trace is not None:
-            report = trace_report(root, trace, active)
+            report = trace_report(root, trace, active, evidence_policy=evidence_policy)
+            legacy_tests = report["legacy_test_evidence"]
             for item in report["gaps"]:
                 provisional = item["kind"] in {"missing_requirement_source", "missing_acceptance_criteria",
                                                "missing_implementation_chain", "missing_implementation",
@@ -140,7 +136,7 @@ def validate(project, *, check_hashes=False):
         if facts is not None:
             result = attempt("invalid_facts", lambda: inspect_facts(facts, docs))
             if result is not None:
-                conflicts, overlaps, dangling, unconfirmed_scopes = result
+                conflicts, overlaps, dangling, unconfirmed_scopes, comparisons = result
                 for item in conflicts:
                     issue("fact_conflict", item["id"], severity="warning" if item["severity"] == "P2" else "error")
                 for item in overlaps:
@@ -150,15 +146,17 @@ def validate(project, *, check_hashes=False):
                 for item in unconfirmed_scopes:
                     issue("unconfirmed_fact_scope", item, severity="warning")
     counts = Counter(item["severity"] for item in issues)
-    return {"issues": issues, "fact_conflicts": conflicts, "errors": counts["error"], "warnings": counts["warning"],
+    return {"issues": issues, "fact_conflicts": conflicts, "fact_comparisons": comparisons,
+            "errors": counts["error"], "warnings": counts["warning"],
+            "evidence_policy": evidence_policy, "legacy_test_evidence": legacy_tests,
             "checked_document_hashes": check_hashes,
-            "limits": ["只比较同类、同键且作用域完全相同的活动资料结构化明示值。",
-                       "定位、提取、单位和范围归一化、语义差异、批准和工程风险需要人工确认。"]}
+            "limits": ["只比较同类别和键的活动资料明示值。不同变体或不交叠版本分开处理，区间交叠供人工审查。",
+                       "范围映射、复杂语义、批准和实际风险仍需工程确认。"]}
 
 
 def main(args):
     project = get_project(args)
-    report = validate(project, check_hashes=args.check_hashes)
+    report = validate(project, check_hashes=args.check_hashes, require_structured_evidence=args.require_structured_evidence)
     emit(args, project, report)
     return int(bool(report["errors"] or args.strict and report["warnings"]))
 
@@ -167,4 +165,5 @@ if __name__ == "__main__":
     cli = parser(__doc__)
     cli.add_argument("--check-hashes", action="store_true", help="重算活动资料 SHA-256")
     cli.add_argument("--strict", action="store_true", help="将警告也作为返回码 1 的检查项")
+    cli.add_argument("--require-structured-evidence", action="store_true", help="对旧台账也应用 V1.1 测试证据和验收规则")
     raise SystemExit(cli_main(cli, main))
